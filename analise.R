@@ -3,7 +3,9 @@
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%% V1 06/12/2025 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 
-#manipualção dos dados obtidos do praat e análises: antes de carregar os dados fiz uma limpeza na planilha, desconsiderando casos de s em ataque, s em coda além dos 20 min delimitados, s em coda em contextos de assimilação e s em morfemas de plural
+#manipualção dos dados obtidos do praat e análises: antes de carregar os dados 
+#fiz uma limpeza na planilha, desconsiderando casos de s em ataque, s em coda 
+#além dos 20 min delimitados, s em coda em contextos de assimilação e s em morfemas de plural
 
 #install.packages("hms"); install.packages("fuzzyjoin")
 
@@ -14,7 +16,8 @@ library(fuzzyjoin)
 library(RColorBrewer)
 
 #definir diretório
-setwd("C:/Users/sarah/Desktop/LL434/trabalho-final")
+#setwd("C:/Users/sarah/Desktop/LL434/trabalho-final")
+setwd("C:/Users/224425/Downloads/s-acustic")
 
 #Carregar dados################################################################
 ## CONTINUO ###################################################################
@@ -123,6 +126,8 @@ dev.off()
 ## VD/ CG e duração ####
 #medidas centrais
 #grafico n absolutos
+
+
 png("VD_CG_duration.png", width = 10, height = 6, units = "in", res = 300)
 ggplot(dados.combinados, aes(x = centergravity, y = duration, shape = VD, fill = VD, color = VD)) +
   geom_point(color = "black", size = 2.5, stroke = 0.3, alpha = 0.8) + 
@@ -141,21 +146,29 @@ ggplot(dados.combinados, aes(x = centergravity, y = duration, fill = VD)) +
   scale_y_continuous(name = "Duração (ms)") +
   scale_fill_brewer(palette = "Reds") +
   #scale_fill_manual(values = c("A" = "#fef0d9", "P" = "#fdcc8a", "0" = "#fc8d59", "H" = "#d7301f")) +
-  facet_wrap(. ~ VD, labeller = labeller(VD = c("A" = "Alveolar",
-                                                "P" = "Palatal",
-                                                "0" = "Zero fonético",
-                                                "H" = "Aspirada"))) +
+  facet_wrap(. ~ VD, labeller = labeller(VD = c("A" = "Alveolar (N=2922)",
+                                                "P" = "Palatal (N = 754)",
+                                                "0" = "Zero fonético N = 701)",
+                                                "H" = "Aspirada N = 119)"))) +
   theme_light() +
   theme(legend.position = "none")
 dev.off()
 
 CG.DURACAO_medidas.centrais <- dados.combinados %>% 
   group_by(VD) %>% 
-  summarize(media_cg = mean(centergravity),
-            mediana_cg = median(centergravity),
-            media_dur = mean(duration),
-            mediana_dur = median(duration)) %>%
+  summarize(ocorrencias = n(),
+    media_cg = mean(centergravity),
+    mediana_cg = median(centergravity),
+    media_dur = mean(duration),
+    mediana_dur = median(duration)) %>%
   print()
+
+rotulos_com_n <- c(
+  "A" = paste0("Alveolar (N=", CG.DURACAO_medidas.centrais$ocorrencias[CG.DURACAO_medidas.centrais$VD == "A"], ")"),
+  "P" = paste0("Palatal (N=", CG.DURACAO_medidas.centrais$ocorrencias[CG.DURACAO_medidas.centrais$VD == "P"], ")"),
+  "0" = paste0("Zero fonético (N=", CG.DURACAO_medidas.centrais$ocorrencias[CG.DURACAO_medidas.centrais$VD == "0"], ")"),
+  "H" = paste0("Aspirada (N=", CG.DURACAO_medidas.centrais$ocorrencias[CG.DURACAO_medidas.centrais$VD == "H"], ")")
+)
 
 #histograma medidas
 png("VD_histograma.png", width = 10, height = 6, units = "in", res = 300)
@@ -170,12 +183,9 @@ ggplot(dados.combinados, aes(x = centergravity, fill = VD)) +
   labs(x = "Centro de Gravidade (Hz)",
        y = "Frequência",
        color = "Medidas") +  # Título da legenda para as linhas
-  facet_wrap(~ VD, labeller = labeller(VD = c("A" = "Alveolar",
-                                             "P" = "Palatal",
-                                             "0" = "Zero fonético",
-                                             "H" = "Aspirada"))) +
+  facet_wrap(~ VD, labeller = labeller(VD = rotulos_com_n)) +
   scale_fill_brewer(palette = "Reds") +
-  scale_color_manual(values = c("Média" = "#c0072e", "Mediana" = "#07c099")) +
+  scale_color_manual(values = c("Mediana" = "#07c099", "Média" = "#c0072e")) +
   scale_x_continuous(name = "Centro de Gravidade (Hz)", limits = c(NA, 10000)) +
   theme_light() +
   guides(fill = "none")
@@ -217,19 +227,7 @@ shapiro.test(dados.combinados_HAP$centergravity)
 
 
 #ANÁLISES  ####################################################################
-
-##Apagamento####
-dados.combinados %>% 
-  filter(VD == "0") %>% 
-  droplevels() %>% 
-  ggplot(aes(x = centergravity, y = duration, fill = VD)) +
-  geom_point(color = "black", size = 2.2, stroke = 0.3, shape = 21, position = position_jitter(width = 10, height = 5), alpha = 0.6) + 
-  #scale_x_continuous(name = "Center of Gravity (Hz)", limits = c(0, 4000)) +
-  #scale_y_continuous(name = "Frication Duration (ms)", limits = c(0, 300)) +
-  theme_minimal()
-
 ## Palatalização ####
-
 #distribuição discreta
 prop.AP <- dados.combinados_AP %>% 
   count(VD) %>% 
@@ -274,12 +272,15 @@ ggplot(prop.AP.participantes, aes(x = VD, y = prop, fill = VD, label = label)) +
 #Analise do centro de gravidade com hipóteses baseadas em Barbosa 2023, compara-se duas analises discreta e contínua
 ggplot(dados.combinados_AP, aes(x = centergravity, y = duration, fill = VD)) +
   geom_point(color = "black", size = 2.2, stroke = 0.3, shape = 21, position = position_jitter(width = 10, height = 5), alpha = 1) + 
-  facet_wrap(. ~ VD) +
+  facet_wrap(. ~ VD,  labeller = labeller(VD = c("A" = "Alveolar (N = 1129)",
+                                                 "P" = "Palatal (N = 738)"))) +
   scale_x_continuous(name = "Centro de Gravidade (Hz)") +
   scale_y_continuous(name = "Duração (ms)") +
   scale_fill_brewer(palette = "Reds")+
   #scale_fill_manual(values = c("feminino" = "#fa9770", "masculino" = "#70fadc"))+
-  theme_light()
+  theme_light() +
+  theme(legend.position = "none")
+
 
 ###### Medidas centrais ####
 AP.medidas_centrais <- dados.combinados_AP %>% 
@@ -348,11 +349,12 @@ chisq.test(tab.GENERO.X2)
 dados.combinados_AP %>%
   ggplot(aes(x = centergravity, y = duration, fill = GENERO)) +
   geom_point(color = "black", size = 2.2, stroke = 0.3, shape = 21, position = position_jitter(width = 10, height = 5), alpha = 0.8) + 
-  facet_wrap(. ~ VD) +
+  facet_wrap(. ~ VD, labeller = as_labeller(rotulos_com_n)) +
   scale_x_continuous(name = "Centro de Gravidade (Hz)") +
   scale_y_continuous(name = "Duração (ms)") +
   scale_fill_manual(values = c("feminino" = "#fa9770", "masculino" = "#07c099"))+
   theme_light()
+
 
 
 ggplot(dados.combinados_AP, aes(x = GENERO, y = centergravity, fill = GENERO)) +
@@ -364,12 +366,14 @@ ggplot(dados.combinados_AP, aes(x = GENERO, y = centergravity, fill = GENERO)) +
 wilcox.test(centergravity ~ GENERO, data = dados.combinados_AP, conf.int = T)
 #Mediana do grupo de referência menos mediana do outro grupo
 
+
 #duração
 ggplot(dados.combinados_AP, aes(x = GENERO, y = duration, fill = GENERO)) +
   geom_boxplot(notch = TRUE)+
   scale_y_continuous(name = "Duração (Hz)") +
-  #scale_fill_manual(values = c("feminino" = "#fa9770", "masculino" = "#07c099"))+
+  scale_fill_manual(values = c("feminino" = "#fa9770", "masculino" = "#07c099"))+
   theme_light()
+
 wilcox.test(duration ~ GENERO, data = dados.combinados_AP, conf.int = T)
 
 
@@ -384,7 +388,7 @@ AP_IDADE.MIGRACAO <- dados.combinados_AP %>%
 
 
 #png("VD_AP-09.tempo_sp.png")
-ggplot(tab.IDADE.MIGRACAO[23:44,], aes(x = IDADE_MIGRACAO, y = prop * 100, label = round(prop * 100, 1))) +
+ggplot(AP_IDADE.MIGRACAO[23:44,], aes(x = IDADE_MIGRACAO, y = prop * 100, label = round(prop * 100, 1))) +
   geom_point(stat = "identity", color = "black") + 
   stat_smooth(method=lm, se=TRUE, color="red")+
   #labs(x = "Tempo de Residência", y = "Proporção de Palatalização") +
@@ -397,22 +401,19 @@ summary(mod.AP_IDADE.MIGRACAO)
 
 
 #continua
-AP_medidas.centrais_participante_idade.migracao <- dados.combinados_AP %>%
+palatal_idade.migracao <- dados.combinados_AP %>%
   filter(VD == "P") %>% 
   group_by(ARQUIVO) %>% 
-  summarize(media_cg = mean(centergravity, na.rm = TRUE),
-            mediana_cg = median(centergravity, na.rm = TRUE),
-            IDADE_MIGRACAO = first(IDADE_MIGRACAO)) %>%
   print()
 
-AP_medidas.centrais_participante %>%
-  ggplot(aes(x = IDADE_MIGRACAO, y = mediana_cg))+
+palatal_idade.migracao %>%
+  ggplot(aes(x = IDADE_MIGRACAO, y = centergravity))+
   geom_point(stat = "identity", color = "black") + 
   stat_smooth(method="lm", se=TRUE, color="red")+
   geom_point()
 
 
-cor.test(AP_medidas.centrais_participante$mediana_cg, AP_medidas.centrais_participante$IDADE_MIGRACAO, method = "spearman")  # não paramétrico
+cor.test(palatal_idade.migracao$centergravity, palatal_idade.migracao$IDADE_MIGRACAO, method = "spearman")  # não paramétrico
 
 
 ### TEMPO RESIDENCIA ###########
@@ -439,20 +440,35 @@ summary(mod.AP_TEMPO.RESIDENCIA)
 
 
 #continua
-AP_medidas.centrais_participante_tempo.residencia <- dados.combinados_AP %>%
+AP_palatal_tempo.residencia <- dados.combinados_AP %>%
   filter(VD == "P") %>% 
-  group_by(ARQUIVO) %>% 
-  summarize(media_cg = mean(centergravity, na.rm = TRUE),
-            mediana_cg = median(centergravity, na.rm = TRUE),
-            TEMPO_RESIDENCIA = first(TEMPO_RESIDENCIA)) %>%
+  group_by(ARQUIVO) %>%
   print()
 
-AP_medidas.centrais_participante_tempo.residencia %>%
-  ggplot(aes(x = TEMPO_RESIDENCIA, y = mediana_cg))+
+AP_palatal_tempo.residencia %>%
+  ggplot(aes(x = TEMPO_RESIDENCIA, y = centergravity))+
   geom_point(stat = "identity", color = "black") + 
   stat_smooth(method="lm", se=TRUE, color="red")+
   geom_point()
 
+cor.test(AP_palatal_tempo.residencia$centergravity, AP_palatal_tempo.residencia$TEMPO_RESIDENCIA, method = "spearman") 
 
-cor.test(AP_medidas.centrais_participante_tempo.residencia$mediana_cg, AP_medidas.centrais_participante_tempo.residencia$TEMPO_RESIDENCIA, method = "spearman") 
 
+#PARTICIPANTE####
+unique(dados.combinados_AP$ARQUIVO)
+
+dados.combinados_AP <- dados.combinados_AP %>%
+  mutate(PARTICIPANTE = str_extract(ARQUIVO, "[^_]+$"))
+
+unique(dados.combinados_AP$PARTICIPANTE)
+
+
+#dados.PARTICIPANTE <- dados.combinados_AP %>% 
+ 
+dados.combinados_AP %>% 
+  ggplot(aes(x = VD, y=centergravity, fill = VD))+
+  geom_boxplot(notch = FALSE)+
+  scale_y_continuous(name = "Duração (Hz)") +
+  scale_fill_brewer(palette = "Reds")+
+  facet_wrap(. ~ PARTICIPANTE)+
+  theme_light()
